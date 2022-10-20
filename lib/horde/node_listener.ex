@@ -22,6 +22,7 @@ defmodule Horde.NodeListener do
 
   def init(cluster) do
     :net_kernel.monitor_nodes(true, node_type: :visible)
+    set_members(cluster)
     {:ok, cluster}
   end
 

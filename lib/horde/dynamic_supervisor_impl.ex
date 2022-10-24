@@ -74,6 +74,11 @@ defmodule Horde.DynamicSupervisorImpl do
     {:noreply, set_members(members, state)}
   end
 
+  def terminate(reason, _state) do
+    Logger.error("DynamicSupervisor SHUTTING DOWN #{inspect(reason)}")
+    Logger.error("MESSAGES\n#{inspect(Process.info(self(), :messages), pretty: true, printable_limit: :infinity, limit: :infinity)}")
+  end
+
   def on_diffs(name, diffs) do
     try do
       send(name, {:crdt_update, diffs})

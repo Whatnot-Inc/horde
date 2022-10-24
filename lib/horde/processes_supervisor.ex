@@ -183,6 +183,8 @@ defmodule Horde.ProcessesSupervisor do
 
   @behaviour GenServer
 
+  require Logger
+
   @doc """
   Callback invoked to start the supervisor and during hot code upgrades.
 
@@ -1017,11 +1019,13 @@ defmodule Horde.ProcessesSupervisor do
 
   defp relinquish_child_to_horde(state, pid) do
     {child_id, _, _, _, _, _} = Map.get(state.children, pid)
+    Logger.error("RELINQUISHING CHILD #{child_id}")
     GenServer.cast(state.root_name, {:relinquish_child_process, child_id})
   end
 
   defp remove_child_from_horde(state, pid) do
     {child_id, _, _, _, _, _} = Map.get(state.children, pid)
+    Logger.error("DISOWNING CHILD #{child_id}")
     GenServer.cast(state.root_name, {:disown_child_process, child_id})
   end
 

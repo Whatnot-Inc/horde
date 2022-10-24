@@ -427,7 +427,8 @@ defmodule Horde.DynamicSupervisorImpl do
 
               case current_member do
                 %{status: :dead} ->
-                  {_response, state} = add_child(child_spec, state)
+                  Logger.error("DETECTED NODE DOWN, RESTARTING CHILD")
+                  {_response, state} = add_child(randomize_child_id(child_spec), state)
 
                   state
 
@@ -459,6 +460,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
     case choose_node(child_spec, state) do
       {:ok, %{name: ^this_name}} ->
+        Logger.error("DETECTED UNASSIGNED PROCESS ENTRY, RESTARTING CHILD")
         {_resp, new_state} = add_child(child_spec, state)
         new_state
 

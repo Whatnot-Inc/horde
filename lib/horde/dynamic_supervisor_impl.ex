@@ -75,7 +75,7 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   def terminate(reason, _state) do
-    Logger.error("DynamicSupervisor SHUTTING DOWN #{inspect(reason)}")
+    Logger.error("DynamicSupervisor #{inspect(self())} SHUTTING DOWN #{inspect(reason)}")
     Logger.error("MESSAGES\n#{inspect(Process.info(self(), :messages), pretty: true, printable_limit: :infinity, limit: :infinity)}")
   end
 
@@ -214,11 +214,7 @@ defmodule Horde.DynamicSupervisorImpl do
     {:reply, count, state}
   end
 
-  def handle_cast({:update_child_pid, child_id, new_pid}, state) do
-    {:noreply, set_child_pid(state, child_id, new_pid)}
-  end
-
-  def handle_cast({:relinquish_child_process, child_id}, state) do
+  def handle_call({:relinquish_child_process, child_id}, _from, state) do
     # signal to the rest of the nodes that this process has been relinquished
     # (to the Horde!) by its parent
     {_, child, _} = get_item(state.processes_by_id, child_id)
@@ -230,7 +226,12 @@ defmodule Horde.DynamicSupervisorImpl do
       :infinity
     )
 
-    {:noreply, state}
+    {:reply, :ok, state}
+  end
+
+
+  def handle_cast({:update_child_pid, child_id, new_pid}, state) do
+    {:noreply, set_child_pid(state, child_id, new_pid)}
   end
 
   # TODO think of a better name than "disown_child_process"

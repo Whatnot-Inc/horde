@@ -290,7 +290,7 @@ defmodule Horde.ProcessesSupervisor do
   end
 
   def send_exit_signal(supervisor, pid, reason) do
-    GenServer.call(supervisor, {:send_exit_signal, pid, reason})
+    GenServer.cast(supervisor, {:send_exit_signal, pid, reason})
   end
 
   def terminate_child_by_id(supervisor, child_id) do
@@ -665,11 +665,6 @@ defmodule Horde.ProcessesSupervisor do
   defp validate_extra_arguments(list) when is_list(list), do: :ok
   defp validate_extra_arguments(extra), do: {:error, {:invalid_extra_arguments, extra}}
 
-  def handle_call({:send_exit_signal, pid, reason}, _f, state) do
-    Process.exit(pid, reason)
-    {:reply, :ok, state}
-  end
-
   def handle_call({:terminate_child_by_id, child_id}, from, state) do
     handle_call({:terminate_child, state.child_id_to_pid[child_id]}, from, state)
   end
@@ -792,6 +787,11 @@ defmodule Horde.ProcessesSupervisor do
   defp exit_reason(:throw, value, stack), do: {{:nocatch, value}, stack}
 
   @impl true
+  def handle_cast({:send_exit_signal, pid, reason}, state) do
+    Process.exit(pid, reason)
+    {:noreply, state}
+  end
+
   def handle_cast(_msg, state) do
     {:noreply, state}
   end
@@ -846,7 +846,8 @@ defmodule Horde.ProcessesSupervisor do
   end
 
   @impl true
-  def terminate(_, %{children: children} = state) do
+  def terminate(reason, %{children: children} = state) do
+    Logger.error("Processes supervisor #{inspect self()} SHUTTING DOWN #{inspect reason}")
     :ok = terminate_children(children, %{state | shutting_down: true})
   end
 
@@ -1020,7 +1021,8 @@ defmodule Horde.ProcessesSupervisor do
   defp relinquish_child_to_horde(state, pid) do
     {child_id, _, _, _, _, _} = Map.get(state.children, pid)
     Logger.error("RELINQUISHING CHILD #{child_id}")
-    GenServer.cast(state.root_name, {:relinquish_child_process, child_id})
+
+    :ok = GenServer.call(state.root_name, {:relinquish_child_process, child_id})
   end
 
   defp remove_child_from_horde(state, pid) do

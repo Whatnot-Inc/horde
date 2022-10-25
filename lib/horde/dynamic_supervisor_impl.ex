@@ -408,11 +408,13 @@ defmodule Horde.DynamicSupervisorImpl do
 
           case {current_node, chosen_node} do
             {same_node, same_node} ->
+              Logger.error("CHOSEN NODE IS THE SAME AS CURRENT NODE")
               # process is running on the node on which it belongs
 
               state
 
             {^this_node, _other_node} ->
+              Logger.error("STATE SET TO CURRENT NODE, CHOSEN NODE IS DIFFERENT")
               # process is running here but belongs somewhere else
 
               case state.supervisor_options[:process_redistribution] do
@@ -438,6 +440,7 @@ defmodule Horde.DynamicSupervisorImpl do
               end
 
             {_other_node1, _other_node2} ->
+              Logger.error("CURRENT NODE AND CHOSEN NODES ARE NOT THE CURRENT NODE")
               # process is neither running here nor belongs here
 
               state

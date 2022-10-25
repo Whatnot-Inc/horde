@@ -1022,7 +1022,8 @@ defmodule Horde.ProcessesSupervisor do
     {child_id, _, _, _, _, _} = Map.get(state.children, pid)
     Logger.error("RELINQUISHING CHILD #{child_id}")
 
-    :ok = GenServer.call(state.root_name, {:relinquish_child_process, child_id})
+    #:ok = GenServer.call(state.root_name, {:relinquish_child_process, child_id})
+    :ok
   end
 
   defp remove_child_from_horde(state, pid) do

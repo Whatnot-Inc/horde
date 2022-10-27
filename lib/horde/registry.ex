@@ -247,10 +247,10 @@ defmodule Horde.Registry do
   @doc "See `Registry.lookup/2`."
   def lookup({:via, _, {registry, name}}), do: lookup(registry, name)
 
-  def lookup(registry, key) when is_atom(registry) do
+  def lookup(registry, key, rpc_timeout \\ 5_000) when is_atom(registry) do
     with [{^key, member, {pid, value}}] <- :ets.lookup(keys_ets_table(registry), key),
          true <- member_in_cluster?(registry, member),
-         true <- process_alive?(pid) do
+         true <- process_alive?(pid, rpc_timeout) do
       [{pid, value}]
     else
       _ -> []
@@ -412,13 +412,13 @@ defmodule Horde.Registry do
 
   defp maybe_add_node_manager(children, _, _), do: children
 
-  defp process_alive?(pid) when node(pid) == node(), do: Process.alive?(pid)
+  defp process_alive?(pid, _) when node(pid) == node(), do: Process.alive?(pid)
 
-  defp process_alive?(pid) do
+  defp process_alive?(pid, rpc_timeout) do
     n = node(pid)
 
     Node.list() |> Enum.member?(n) &&
-      :rpc.call(n, Process, :alive?, [pid])
+      :rpc.call(n, Process, :alive?, [pid], rpc_timeout)
   end
 
   defp member_in_cluster?(registry, member) do

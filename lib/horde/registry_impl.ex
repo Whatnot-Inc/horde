@@ -211,6 +211,27 @@ defmodule Horde.RegistryImpl do
   defp process_diff(state, {:add, {:key, key}, {member, pid, value}}) do
     link_local_pid(pid)
 
+    case member == fully_qualified_name(state.name) do
+      true ->
+        state
+
+      false ->
+        process_add(state, key, member, pid, value)
+    end
+  end
+
+  defp process_diff(state, {:remove, {:key, key}}) do
+    unregister_local(state, key)
+
+    state
+  end
+
+  defp process_diff(state, {:add, {:registry, key}, value}) do
+    :ets.insert(state.registry_ets_table, {key, value})
+    state
+  end
+
+  defp process_add(state, key, member, pid, value) do
     add_key_to_pids_table(state, pid, key)
 
     with [{^key, _member, {other_pid, other_value}}] when other_pid != pid <-
@@ -229,17 +250,6 @@ defmodule Horde.RegistryImpl do
       send(listener, {:register, state.name, key, pid, value})
     end
 
-    state
-  end
-
-  defp process_diff(state, {:remove, {:key, key}}) do
-    unregister_local(state, key)
-
-    state
-  end
-
-  defp process_diff(state, {:add, {:registry, key}, value}) do
-    :ets.insert(state.registry_ets_table, {key, value})
     state
   end
 
@@ -305,10 +315,13 @@ defmodule Horde.RegistryImpl do
   def handle_call({:register, key, value, pid}, _from, state) do
     Process.link(pid)
 
+    member = fully_qualified_name(state.name)
+    state = process_add(state, key, member, pid, value)
+
     DeltaCrdt.put(
       crdt_name(state.name),
       {:key, key},
-      {fully_qualified_name(state.name), pid, value},
+      {member, pid, value},
       :infinity
     )
 

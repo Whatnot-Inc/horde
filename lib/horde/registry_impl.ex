@@ -117,7 +117,7 @@ defmodule Horde.RegistryImpl do
       [{_pid, keys}] ->
         DeltaCrdt.drop(
           crdt_name(state.name),
-          Enum.map(keys, fn key -> {:key, key} end),
+          Enum.map(keys, fn key -> {:key, key, pid} end),
           :infinity
         )
 
@@ -222,6 +222,12 @@ defmodule Horde.RegistryImpl do
 
   defp process_diff(state, {:remove, {:key, key}}) do
     unregister_local(state, key)
+
+    state
+  end
+
+  defp process_diff(state, {:remove, {:key, key, pid}}) do
+    unregister_local(state, key, pid)
 
     state
   end

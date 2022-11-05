@@ -731,21 +731,24 @@ defmodule Horde.DynamicSupervisorImpl do
 
   defp add_children(children, state) do
     Enum.map(children, fn child_spec ->
-      Logger.error("Will add children #{inspect child_spec}")
-      res = case Horde.ProcessesSupervisor.start_child(supervisor_name(state.name), child_spec) do
-        {:ok, child_pid} ->
-          {{:ok, child_pid}, child_spec}
+      Logger.error("Will add children #{inspect(child_spec)}")
 
-        {:ok, child_pid, term} ->
-          {{:ok, child_pid, term}, child_spec}
+      res =
+        case Horde.ProcessesSupervisor.start_child(supervisor_name(state.name), child_spec) do
+          {:ok, child_pid} ->
+            {{:ok, child_pid}, child_spec}
 
-        {:error, error} ->
-          {:error, error}
+          {:ok, child_pid, term} ->
+            {{:ok, child_pid, term}, child_spec}
 
-        :ignore ->
-          :ignore
-      end
-      Logger.error("Result #{inspect res}")
+          {:error, error} ->
+            {:error, error}
+
+          :ignore ->
+            :ignore
+        end
+
+      Logger.error("Result #{inspect(res)}")
       res
     end)
     |> Enum.reduce({[], state}, fn

@@ -188,7 +188,7 @@ defmodule Horde.RegistryImpl do
 
     DeltaCrdt.drop(
       crdt_name(state.name),
-      Enum.map(removed_keys, fn [key, _pid] -> {:key, key} end),
+      Enum.map(removed_keys, fn [key, pid] -> {:key, key, pid} end),
       :infinity
     )
 

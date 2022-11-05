@@ -421,7 +421,7 @@ defmodule Horde.DynamicSupervisorImpl do
               end
 
             {_current_node, ^this_node} ->
-              Logger.error("Running here on another node but belongs here #{inspect(child_spec)}")
+              Logger.error("Running on another node but belongs here #{inspect(child_spec)}")
               # process is running on another node but belongs here
 
               case current_member do
@@ -731,7 +731,8 @@ defmodule Horde.DynamicSupervisorImpl do
 
   defp add_children(children, state) do
     Enum.map(children, fn child_spec ->
-      case Horde.ProcessesSupervisor.start_child(supervisor_name(state.name), child_spec) do
+      Logger.error("Will add children #{inspect child_spec}")
+      res = case Horde.ProcessesSupervisor.start_child(supervisor_name(state.name), child_spec) do
         {:ok, child_pid} ->
           {{:ok, child_pid}, child_spec}
 
@@ -744,6 +745,8 @@ defmodule Horde.DynamicSupervisorImpl do
         :ignore ->
           :ignore
       end
+      Logger.error("Result #{inspect res}")
+      res
     end)
     |> Enum.reduce({[], state}, fn
       {{:ok, child_pid} = resp, child_spec}, {responses, state} ->

@@ -393,6 +393,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
   defp handoff_processes(state) do
     this_node = fully_qualified_name(state.name)
+    Logger.error("Handoff processes triggered")
 
     all_items_values(state.processes_by_id)
     |> Enum.reduce(state, fn {current_node, child_spec, _child_pid}, state ->
@@ -402,11 +403,13 @@ defmodule Horde.DynamicSupervisorImpl do
 
           case {current_node, chosen_node} do
             {same_node, same_node} ->
+              Logger.error("Running on the same node as it belongs #{inspect(child_spec)}")
               # process is running on the node on which it belongs
 
               state
 
             {^this_node, _other_node} ->
+              Logger.error("Running here but belongs on other node #{inspect(child_spec)}")
               # process is running here but belongs somewhere else
 
               case state.supervisor_options[:process_redistribution] do
@@ -418,19 +421,26 @@ defmodule Horde.DynamicSupervisorImpl do
               end
 
             {_current_node, ^this_node} ->
+              Logger.error("Running here on another node but belongs here #{inspect(child_spec)}")
               # process is running on another node but belongs here
 
               case current_member do
                 %{status: :dead} ->
+                  Logger.error("Current member is marked dead")
                   {_response, state} = add_child(randomize_child_id(child_spec), state)
 
                   state
 
                 _ ->
+                  Logger.error("Current member is NOT marked dead")
                   state
               end
 
             {_other_node1, _other_node2} ->
+              Logger.error(
+                "Running is neither running here nor belongs here #{inspect(child_spec)}"
+              )
+
               # process is neither running here nor belongs here
 
               state

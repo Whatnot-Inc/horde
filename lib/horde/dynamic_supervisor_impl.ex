@@ -230,17 +230,21 @@ defmodule Horde.DynamicSupervisorImpl do
 
   # TODO think of a better name than "disown_child_process"
   def handle_cast({:disown_child_process, child_id}, state) do
-    {{_, _, child_pid}, new_processes_by_id} = pop_item(state.processes_by_id, child_id)
+    case pop_item(state.processes_by_id, child_id) do
+      {{_, _, child_pid}, new_processes_by_id} ->
+        new_state = %{
+          state
+          | processes_by_id: new_processes_by_id,
+            process_pid_to_id: delete_item(state.process_pid_to_id, child_pid),
+            local_process_count: state.local_process_count - 1
+        }
 
-    new_state = %{
-      state
-      | processes_by_id: new_processes_by_id,
-        process_pid_to_id: delete_item(state.process_pid_to_id, child_pid),
-        local_process_count: state.local_process_count - 1
-    }
+        DeltaCrdt.delete(crdt_name(state.name), {:process, child_id}, :infinity)
+        {:noreply, new_state}
 
-    DeltaCrdt.delete(crdt_name(state.name), {:process, child_id}, :infinity)
-    {:noreply, new_state}
+      {nil, _} ->
+        {:noreply, state}
+    end
   end
 
   defp set_child_pid(state, child_id, new_child_pid) do

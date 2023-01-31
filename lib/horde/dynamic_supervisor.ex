@@ -264,6 +264,11 @@ defmodule Horde.DynamicSupervisor do
   def count_children(supervisor), do: call(supervisor, :count_children)
 
   @doc """
+  Taints the supervisor, preventing any new processes from being started under it.
+  """
+  def taint(supervisor), do: call(supervisor, :taint)
+
+  @doc """
   Waits for Horde.DynamicSupervisor to have quorum.
   """
   @spec wait_for_quorum(horde :: GenServer.server(), timeout :: timeout()) :: :ok

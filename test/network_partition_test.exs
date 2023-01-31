@@ -73,6 +73,9 @@ defmodule NetworkPartitionTest do
 
     Process.sleep(100)
 
+    IO.inspect(:rpc.call(n1, DeltaCrdt, :read, [TestSup.Crdt]))
+    IO.inspect(:rpc.call(n2, DeltaCrdt, :read, [TestSup.Crdt]))
+
     Logger.info("stopping #{n2}")
     LocalCluster.stop_nodes([n2])
 

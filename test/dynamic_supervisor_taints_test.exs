@@ -28,6 +28,7 @@ defmodule DynamicSupervisorTaintsTest do
         strategy: :one_for_one,
         delta_crdt_options: [sync_interval: 20]
       )
+
     Horde.Cluster.set_members(n1, [n1, n2, n3])
 
     # give the processes a couple ms to sync up
@@ -106,13 +107,54 @@ defmodule DynamicSupervisorTaintsTest do
     assert count2 + count3 == proc_count * 2
   end
 
-  # test "doesn't restart crashed process on a tainted node"
+  test "doesn't migrate processes to the tainted node after a node goes down", %{
+    n1: n1,
+    n2: n2,
+    n3: n3
+  } do
+    proc_count = 100
+
+    :ok = Horde.DynamicSupervisor.taint(n1)
+    Process.sleep(100)
+
+    for i <- 1..proc_count do
+      sup = Enum.random([n1, n2, n3])
+      child_spec = make_child_spec(i)
+
+      {:ok, _} = Horde.DynamicSupervisor.start_child(sup, child_spec)
+    end
+
+    eventually(fn ->
+      Horde.DynamicSupervisor.count_children(n1).active == proc_count
+    end)
+
+    count1 = count_local_children(n1) |> IO.inspect(label: "count1")
+    count2 = count_local_children(n2) |> IO.inspect(label: "count2")
+    count3 = count_local_children(n3) |> IO.inspect(label: "count3")
+
+    Process.flag(:trap_exit, true)
+    Horde.DynamicSupervisor.stop(n3, :shutdown)
+
+    eventually(
+      fn ->
+        count1 = count_local_children(n1)
+        count2 = count_local_children(n2)
+
+        assert count1 == 0
+        assert count2 == proc_count
+      end,
+      250,
+      100
+    )
+  end
+
   # test "doesn't start the process if only tainted nodes are available"
   # test "doesn't restart crashed process if only tainted nodes are available"
   # test "doesn't actively handoff processes when node becomes tainted"
   # test "doesn't handoff processes to tainted nodes during rebalancing"
   # test "processes are started on untainted node"
   # test "node that's untainted outside of the cluter joins the cluster as untainted"
+  # test taint on startup
 
   defp count_local_children(dynamic_sup) do
     proc_sup_name = :"#{dynamic_sup}.ProcessesSupervisor"
@@ -120,7 +162,7 @@ defmodule DynamicSupervisorTaintsTest do
   end
 
   defp make_child_spec(i) do
-      random_state = :rand.uniform(100_000_000)
-      %{id: i, start: {Agent, :start_link, [fn -> random_state end]}}
+    random_state = :rand.uniform(100_000_000)
+    %{id: i, start: {Agent, :start_link, [fn -> random_state end]}}
   end
 end

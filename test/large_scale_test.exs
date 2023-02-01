@@ -64,8 +64,8 @@ defmodule DynamicSupervisorTaintsTest do
 
     eventually(
       fn ->
-        # count1 = count_local_children(n1) |> IO.inspect(label: "count1")
-        # count2 = count_local_children(n2) |> IO.inspect(label: "count2")
+        count1 = count_local_children(n1) |> IO.inspect(label: "count1")
+        count2 = count_local_children(n2) |> IO.inspect(label: "count2")
 
         assert count1 + count2 == proc_count
       end,

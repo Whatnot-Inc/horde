@@ -12,21 +12,21 @@ defmodule DynamicSupervisorTaintsTest do
       Horde.DynamicSupervisor.start_link(
         name: n1,
         strategy: :one_for_one,
-        delta_crdt_options: [sync_interval: 100]
+        delta_crdt_options: [sync_interval: 20]
       )
 
     {:ok, _} =
       Horde.DynamicSupervisor.start_link(
         name: n2,
         strategy: :one_for_one,
-        delta_crdt_options: [sync_interval: 100]
+        delta_crdt_options: [sync_interval: 20]
       )
 
     {:ok, _} =
       Horde.DynamicSupervisor.start_link(
         name: n3,
         strategy: :one_for_one,
-        delta_crdt_options: [sync_interval: 100]
+        delta_crdt_options: [sync_interval: 20]
       )
 
     Horde.Cluster.set_members(n1, [n1, n2, n3])

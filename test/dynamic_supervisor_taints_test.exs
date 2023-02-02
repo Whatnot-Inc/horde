@@ -70,19 +70,8 @@ defmodule DynamicSupervisorTaintsTest do
     assert count1 == 0
     assert count2 + count3 == @proc_count
 
-    # Remove node from the cluster.
-    :ok = Horde.Cluster.set_members(n1, [n1])
-
-    eventually(fn ->
-      Horde.DynamicSupervisor.count_children(n1).active == 0
-    end)
-
-    # Add the node back to the cluster.
-    :ok = Horde.Cluster.set_members(n1, [n1, n2, n3])
-
-    eventually(fn ->
-      Horde.DynamicSupervisor.count_children(n1).active == @proc_count
-    end)
+    uncluster(n1, [n2, n3])
+    cluster([n1, n2, n3])
 
     for i <- 1..@proc_count do
       sup = Enum.random([n1, n2, n3])
@@ -253,23 +242,11 @@ defmodule DynamicSupervisorTaintsTest do
     assert count_local_children(n3) > 0
 
     # when
-    Horde.Cluster.set_members(n1, [n1])
-
-    eventually(fn ->
-      assert length(Horde.Cluster.members(n1)) == 1
-      assert length(Horde.Cluster.members(n2)) == 2
-      assert length(Horde.Cluster.members(n3)) == 2
-    end)
+    uncluster(n1, [n2, n3])
 
     Horde.DynamicSupervisor.untaint(n1)
 
-    Horde.Cluster.set_members(n1, [n1, n2, n3])
-
-    eventually(fn ->
-      assert length(Horde.Cluster.members(n1)) == 3
-      assert length(Horde.Cluster.members(n2)) == 3
-      assert length(Horde.Cluster.members(n3)) == 3
-    end)
+    cluster([n1, n2, n3])
 
     for i <- 1..@proc_count do
       sup = Enum.random([n1, n2, n3])
@@ -299,5 +276,32 @@ defmodule DynamicSupervisorTaintsTest do
   defp make_child_spec(i) do
     random_state = :rand.uniform(100_000_000)
     %{id: i, start: {Agent, :start_link, [fn -> random_state end]}}
+  end
+
+  # We use custom function because transitive clustering (i.e. setting the cluster
+  # through a single member) doesn't work after a member has been unclustered.
+  def cluster(members) do
+    Enum.each(members, fn m ->
+      Horde.Cluster.set_members(m, members)
+    end)
+
+    eventually(fn ->
+      Enum.each(members, fn m ->
+        assert length(Horde.Cluster.members(m)) == length(members)
+      end)
+    end)
+  end
+
+  def uncluster(member, members_left) do
+    Horde.Cluster.set_members(member, [member])
+    Enum.each(members_left, &Horde.Cluster.set_members(&1, members_left))
+
+    eventually(fn ->
+      assert length(Horde.Cluster.members(member)) == 1
+
+      Enum.each(members_left, fn m ->
+        assert length(Horde.Cluster.members(m)) == length(members_left)
+      end)
+    end)
   end
 end

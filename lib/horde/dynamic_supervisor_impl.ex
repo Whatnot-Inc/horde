@@ -2,7 +2,7 @@ defmodule Horde.DynamicSupervisor.Member do
   @moduledoc false
 
   @type t :: %Horde.DynamicSupervisor.Member{}
-  @type status :: :uninitialized | :alive | :shutting_down | :dead
+  @type status :: :uninitialized | :alive | :tainted | :shutting_down | :dead
   defstruct [:status, :name]
 end
 
@@ -23,6 +23,7 @@ defmodule Horde.DynamicSupervisorImpl do
             supervisor_ref_to_name: %{},
             name_to_supervisor_ref: %{},
             shutting_down: false,
+            tainted: false,
             supervisor_options: [],
             distribution_strategy: Horde.UniformDistribution
 
@@ -50,7 +51,8 @@ defmodule Horde.DynamicSupervisorImpl do
         supervisor_options: options,
         processes_by_id: new_table(:processes_by_id),
         process_pid_to_id: new_table(:process_pid_to_id),
-        name: name
+        name: name,
+        tainted: Keyword.get(options, :tainted, false)
       }
       |> Map.merge(Map.new(Keyword.take(options, [:distribution_strategy])))
 
@@ -91,10 +93,28 @@ defmodule Horde.DynamicSupervisorImpl do
     }
   end
 
-  defp node_status(%{shutting_down: false}), do: :alive
+  # Have `shutting_down` take precedence over `tainted`.
   defp node_status(%{shutting_down: true}), do: :shutting_down
+  defp node_status(%{tainted: true}), do: :tainted
+  defp node_status(%{shutting_down: false}), do: :alive
 
   @doc false
+  def handle_call(:taint, _from, state) do
+    state =
+      %{state | tainted: true}
+      |> set_own_node_status()
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:untaint, _from, state) do
+    state =
+      %{state | tainted: false}
+      |> set_own_node_status()
+
+    {:reply, :ok, state}
+  end
+
   def handle_call(:horde_shutting_down, _f, state) do
     state =
       %{state | shutting_down: true}

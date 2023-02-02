@@ -3,31 +3,27 @@ defmodule DynamicSupervisorTaintsTest do
   use ExUnit.Case
   import Liveness
 
+  @proc_count 1000
+
   setup do
     n1 = :horde_1
     n2 = :horde_2
     n3 = :horde_3
 
-    {:ok, _} =
-      Horde.DynamicSupervisor.start_link(
-        name: n1,
-        strategy: :one_for_one,
-        delta_crdt_options: [sync_interval: 20]
-      )
+    start_supervised!(
+      {Horde.DynamicSupervisor,
+       [name: n1, strategy: :one_for_one, delta_crdt_options: [sync_interval: 20]]}
+    )
 
-    {:ok, _} =
-      Horde.DynamicSupervisor.start_link(
-        name: n2,
-        strategy: :one_for_one,
-        delta_crdt_options: [sync_interval: 20]
-      )
+    start_supervised!(
+      {Horde.DynamicSupervisor,
+       [name: n2, strategy: :one_for_one, delta_crdt_options: [sync_interval: 20]]}
+    )
 
-    {:ok, _} =
-      Horde.DynamicSupervisor.start_link(
-        name: n3,
-        strategy: :one_for_one,
-        delta_crdt_options: [sync_interval: 20]
-      )
+    start_supervised!(
+      {Horde.DynamicSupervisor,
+       [name: n3, strategy: :one_for_one, delta_crdt_options: [sync_interval: 20]]}
+    )
 
     Horde.Cluster.set_members(n1, [n1, n2, n3])
 
@@ -38,12 +34,10 @@ defmodule DynamicSupervisorTaintsTest do
   end
 
   test "doesn't start a process on a tainted node", %{n1: n1, n2: n2, n3: n3} do
-    proc_count = 10_000
-
     :ok = Horde.DynamicSupervisor.taint(n1)
     Process.sleep(100)
 
-    for i <- 1..proc_count do
+    for i <- 1..@proc_count do
       sup = Enum.random([n1, n2, n3])
       child_spec = make_child_spec(i)
 
@@ -55,16 +49,14 @@ defmodule DynamicSupervisorTaintsTest do
     count3 = count_local_children(n3)
 
     assert count1 == 0
-    assert count2 + count3 == proc_count
+    assert count2 + count3 == @proc_count
   end
 
   test "tainted node is still tainted when it re-joins the cluster", %{n1: n1, n2: n2, n3: n3} do
-    proc_count = 10_000
-
     :ok = Horde.DynamicSupervisor.taint(n1)
     Process.sleep(100)
 
-    for i <- 1..proc_count do
+    for i <- 1..@proc_count do
       sup = Enum.random([n1, n2, n3])
       child_spec = make_child_spec(i)
 
@@ -76,7 +68,7 @@ defmodule DynamicSupervisorTaintsTest do
     count3 = count_local_children(n3)
 
     assert count1 == 0
-    assert count2 + count3 == proc_count
+    assert count2 + count3 == @proc_count
 
     # Remove node from the cluster.
     :ok = Horde.Cluster.set_members(n1, [n1])
@@ -89,10 +81,10 @@ defmodule DynamicSupervisorTaintsTest do
     :ok = Horde.Cluster.set_members(n1, [n1, n2, n3])
 
     eventually(fn ->
-      Horde.DynamicSupervisor.count_children(n1).active == proc_count
+      Horde.DynamicSupervisor.count_children(n1).active == @proc_count
     end)
 
-    for i <- 1..proc_count do
+    for i <- 1..@proc_count do
       sup = Enum.random([n1, n2, n3])
       child_spec = make_child_spec(i)
 
@@ -104,7 +96,7 @@ defmodule DynamicSupervisorTaintsTest do
     count3 = count_local_children(n3)
 
     assert count1 == 0
-    assert count2 + count3 == proc_count * 2
+    assert count2 + count3 == @proc_count * 2
   end
 
   test "doesn't migrate processes to the tainted node after a node goes down", %{
@@ -112,12 +104,10 @@ defmodule DynamicSupervisorTaintsTest do
     n2: n2,
     n3: n3
   } do
-    proc_count = 100
-
     :ok = Horde.DynamicSupervisor.taint(n1)
     Process.sleep(100)
 
-    for i <- 1..proc_count do
+    for i <- 1..@proc_count do
       sup = Enum.random([n1, n2, n3])
       child_spec = make_child_spec(i)
 
@@ -125,7 +115,7 @@ defmodule DynamicSupervisorTaintsTest do
     end
 
     eventually(fn ->
-      Horde.DynamicSupervisor.count_children(n1).active == proc_count
+      Horde.DynamicSupervisor.count_children(n1).active == @proc_count
     end)
 
     count1 = count_local_children(n1) |> IO.inspect(label: "count1")
@@ -141,7 +131,7 @@ defmodule DynamicSupervisorTaintsTest do
         count2 = count_local_children(n2)
 
         assert count1 == 0
-        assert count2 == proc_count
+        assert count2 == @proc_count
       end,
       250,
       100

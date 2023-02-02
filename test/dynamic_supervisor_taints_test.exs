@@ -232,6 +232,63 @@ defmodule DynamicSupervisorTaintsTest do
       assert count1 + count2 + count3 == 2 * @proc_count
     end)
   end
+
+  test "node that's untainted outside of the cluter joins the cluster as untainted", %{
+    n1: n1,
+    n2: n2,
+    n3: n3
+  } do
+    # given
+    Horde.DynamicSupervisor.taint(n1)
+
+    for i <- 1..@proc_count do
+      sup = Enum.random([n1, n2, n3])
+      child_spec = make_child_spec(i)
+
+      {:ok, _} = Horde.DynamicSupervisor.start_child(sup, child_spec)
+    end
+
+    assert count_local_children(n1) == 0
+    assert count_local_children(n2) > 0
+    assert count_local_children(n3) > 0
+
+    # when
+    Horde.Cluster.set_members(n1, [n1])
+
+    eventually(fn ->
+      assert length(Horde.Cluster.members(n1)) == 1
+      assert length(Horde.Cluster.members(n2)) == 2
+      assert length(Horde.Cluster.members(n3)) == 2
+    end)
+
+    Horde.DynamicSupervisor.untaint(n1)
+
+    Horde.Cluster.set_members(n1, [n1, n2, n3])
+
+    eventually(fn ->
+      assert length(Horde.Cluster.members(n1)) == 3
+      assert length(Horde.Cluster.members(n2)) == 3
+      assert length(Horde.Cluster.members(n3)) == 3
+    end)
+
+    for i <- 1..@proc_count do
+      sup = Enum.random([n1, n2, n3])
+      child_spec = make_child_spec(i)
+
+      {:ok, _} = Horde.DynamicSupervisor.start_child(sup, child_spec)
+    end
+
+    # then
+    eventually(fn ->
+      count1 = count_local_children(n1)
+      count2 = count_local_children(n2)
+      count3 = count_local_children(n3)
+
+      assert count1 > 0
+      assert count1 + count2 + count3 == 2 * @proc_count
+    end)
+  end
+
   # test taint on startup
 
   defp count_local_children(dynamic_sup) do

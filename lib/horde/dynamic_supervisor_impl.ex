@@ -106,6 +106,14 @@ defmodule Horde.DynamicSupervisorImpl do
     {:reply, :ok, state}
   end
 
+  def handle_call(:untaint, _from, state) do
+    state =
+      %{state | tainted: false}
+      |> set_own_node_status()
+
+    {:reply, :ok, state}
+  end
+
   def handle_call(:horde_shutting_down, _f, state) do
     state =
       %{state | shutting_down: true}

@@ -64,6 +64,7 @@ defmodule Horde.DynamicSupervisor do
           | {:members, [Horde.Cluster.member()] | :auto}
           | {:delta_crdt_options, [DeltaCrdt.crdt_option()]}
           | {:process_redistribution, :active | :passive}
+          | {:tainted, boolean()}
 
   @callback init(options()) :: {:ok, options()} | :ignore
   @callback child_spec(options :: options()) :: Supervisor.child_spec()
@@ -120,7 +121,8 @@ defmodule Horde.DynamicSupervisor do
       :distribution_strategy,
       :process_redistribution,
       :members,
-      :delta_crdt_options
+      :delta_crdt_options,
+      :tainted
     ]
 
     {sup_options, start_options} = Keyword.split(options, keys)
@@ -148,6 +150,7 @@ defmodule Horde.DynamicSupervisor do
     members = Keyword.get(options, :members, [])
     delta_crdt_options = Keyword.get(options, :delta_crdt_options, [])
     process_redistribution = Keyword.get(options, :process_redistribution, :passive)
+    tainted = Keyword.get(options, :tainted, false)
 
     distribution_strategy =
       Keyword.get(
@@ -165,7 +168,8 @@ defmodule Horde.DynamicSupervisor do
       distribution_strategy: distribution_strategy,
       members: members,
       delta_crdt_options: delta_crdt_options(delta_crdt_options),
-      process_redistribution: process_redistribution
+      process_redistribution: process_redistribution,
+      tainted: tainted
     }
 
     {:ok, flags}
@@ -196,7 +200,8 @@ defmodule Horde.DynamicSupervisor do
              extra_arguments: flags.extra_arguments,
              distribution_strategy: flags.distribution_strategy,
              process_redistribution: flags.process_redistribution,
-             members: members(flags.members, name)
+             members: members(flags.members, name),
+             tainted: flags.tainted
            ]},
           {Horde.ProcessesSupervisor,
            [
@@ -262,6 +267,16 @@ defmodule Horde.DynamicSupervisor do
   This function delegates to all supervisors in the cluster and returns the aggregated output.
   """
   def count_children(supervisor), do: call(supervisor, :count_children)
+
+  @doc """
+  Taints the supervisor, preventing any new processes from being started under it.
+  """
+  def taint(supervisor), do: call(supervisor, :taint)
+
+  @doc """
+  Untaints the supervisor.
+  """
+  def untaint(supervisor), do: call(supervisor, :untaint)
 
   @doc """
   Waits for Horde.DynamicSupervisor to have quorum.

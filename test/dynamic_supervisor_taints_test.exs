@@ -118,10 +118,6 @@ defmodule DynamicSupervisorTaintsTest do
       Horde.DynamicSupervisor.count_children(n1).active == @proc_count
     end)
 
-    count1 = count_local_children(n1) |> IO.inspect(label: "count1")
-    count2 = count_local_children(n2) |> IO.inspect(label: "count2")
-    count3 = count_local_children(n3) |> IO.inspect(label: "count3")
-
     Process.flag(:trap_exit, true)
     Horde.DynamicSupervisor.stop(n3, :shutdown)
 
@@ -138,12 +134,104 @@ defmodule DynamicSupervisorTaintsTest do
     )
   end
 
-  # test "doesn't start the process if only tainted nodes are available"
-  # test "doesn't restart crashed process if only tainted nodes are available"
-  # test "doesn't actively handoff processes when node becomes tainted"
-  # test "doesn't handoff processes to tainted nodes during rebalancing"
-  # test "processes are started on untainted node"
-  # test "node that's untainted outside of the cluter joins the cluster as untainted"
+  test "doesn't start the process if only tainted nodes are available", %{n1: n1, n2: n2, n3: n3} do
+    :ok = Horde.DynamicSupervisor.taint(n1)
+    :ok = Horde.DynamicSupervisor.taint(n2)
+    :ok = Horde.DynamicSupervisor.taint(n3)
+    Process.sleep(100)
+
+    for sup <- [n1, n2, n3] do
+      assert {:error, :no_alive_nodes} =
+               Horde.DynamicSupervisor.start_child(sup, make_child_spec(1))
+    end
+  end
+
+  test "the process is lost when its node goes down and only tainted nodes are available", %{
+    n1: n1,
+    n2: n2,
+    n3: n3
+  } do
+    # given
+    assert {:ok, _} = Horde.DynamicSupervisor.start_child(n1, make_child_spec(1))
+
+    :ok = Horde.DynamicSupervisor.taint(n1)
+    :ok = Horde.DynamicSupervisor.taint(n2)
+    :ok = Horde.DynamicSupervisor.taint(n3)
+
+    [sup] = Enum.filter([n1, n2, n3], &(count_local_children(&1) == 1))
+
+    # when
+    Process.flag(:trap_exit, true)
+    Horde.DynamicSupervisor.stop(sup, :shutdown)
+
+    # then
+    assert_raise Liveness, fn ->
+      eventually(fn ->
+        Horde.DynamicSupervisor.count_children(n1).active > 0
+      end)
+    end
+  end
+
+  test "doesn't actively handoff processes when node becomes tainted", %{n1: n1, n2: n2, n3: n3} do
+    # given
+    for i <- 1..@proc_count do
+      sup = Enum.random([n1, n2, n3])
+      child_spec = make_child_spec(i)
+
+      {:ok, _} = Horde.DynamicSupervisor.start_child(sup, child_spec)
+    end
+
+    count1 = count_local_children(n1)
+    assert count1 > 0
+    assert count_local_children(n2) > 0
+    assert count_local_children(n3) > 0
+
+    # when
+    Horde.DynamicSupervisor.taint(n1)
+
+    # then
+    assert_raise Liveness, fn ->
+      eventually(fn ->
+        count_local_children(n1) != count1
+      end)
+    end
+  end
+
+  test "processes are started on untainted node", %{n1: n1, n2: n2, n3: n3} do
+    # given
+    Horde.DynamicSupervisor.taint(n1)
+
+    for i <- 1..@proc_count do
+      sup = Enum.random([n1, n2, n3])
+      child_spec = make_child_spec(i)
+
+      {:ok, _} = Horde.DynamicSupervisor.start_child(sup, child_spec)
+    end
+
+    assert count_local_children(n1) == 0
+    assert count_local_children(n2) > 0
+    assert count_local_children(n3) > 0
+
+    # when
+    Horde.DynamicSupervisor.untaint(n1)
+
+    for i <- 1..@proc_count do
+      sup = Enum.random([n1, n2, n3])
+      child_spec = make_child_spec(i)
+
+      {:ok, _} = Horde.DynamicSupervisor.start_child(sup, child_spec)
+    end
+
+    # then
+    eventually(fn ->
+      count1 = count_local_children(n1)
+      count2 = count_local_children(n2)
+      count3 = count_local_children(n3)
+
+      assert count1 > 0
+      assert count1 + count2 + count3 == 2 * @proc_count
+    end)
+  end
   # test taint on startup
 
   defp count_local_children(dynamic_sup) do

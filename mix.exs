@@ -39,7 +39,8 @@ defmodule Horde.MixProject do
       {:local_cluster, "~> 1.1", only: :test},
       {:schism, "~> 1.0.1", only: :test},
       {:dialyxir, "~> 1.4.3", only: [:dev, :test], runtime: false},
-      {:test_app, path: "test_app", only: [:test]}
+      {:test_app, path: "test_app", only: [:test]},
+      {:liveness, "~> 1.0", only: [:test]}
     ]
   end
 

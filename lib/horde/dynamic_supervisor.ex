@@ -239,9 +239,9 @@ defmodule Horde.DynamicSupervisor do
   @doc """
   Works like `DynamicSupervisor.start_child/2`.
   """
-  def start_child(supervisor, child_spec) do
+  def start_child(supervisor, child_spec, timeout \\ 5_000) do
     child_spec = Supervisor.child_spec(child_spec, [])
-    call(supervisor, {:start_child, child_spec})
+    GenServer.call(supervisor, {:start_child, child_spec}, timeout)
   end
 
   @doc """
@@ -251,8 +251,9 @@ defmodule Horde.DynamicSupervisor do
   """
   @spec terminate_child(Supervisor.supervisor(), child_pid :: pid()) ::
           :ok | {:error, :not_found} | {:error, {:node_dead_or_shutting_down, String.t()}}
-  def terminate_child(supervisor, child_pid) when is_pid(child_pid),
-    do: call(supervisor, {:terminate_child, child_pid})
+  def terminate_child(supervisor, child_pid, timeout \\ 5_000) when is_pid(child_pid) do
+    GenServer.call(supervisor, {:terminate_child, child_pid}, timeout)
+  end
 
   @doc """
   Works like `DynamicSupervisor.which_children/1`.

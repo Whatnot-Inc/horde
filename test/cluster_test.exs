@@ -1,5 +1,6 @@
 defmodule ClusterTest do
   use ExUnit.Case, async: false
+  import Liveness
 
   describe "members option" do
     test "can join registry by specifying members in init" do
@@ -274,6 +275,110 @@ defmodule ClusterTest do
 
       assert :auto_reg_remove |> Horde.Cluster.members() |> Keyword.values() |> Enum.sort() ==
                Enum.sort([node() | tl(ctx.nodes)])
+    end
+  end
+
+  describe "starting and terminating children across cluster" do
+    test "start_child is not blocked forever when remote member goes down" do
+      # given
+      {:ok, _} =
+        Horde.DynamicSupervisor.start_link(
+          name: :sup8,
+          strategy: :one_for_one,
+          delta_crdt_options: [sync_interval: 1_000]
+        )
+
+      {:ok, _} =
+        Horde.DynamicSupervisor.start_link(
+          name: :sup9,
+          strategy: :one_for_one,
+          delta_crdt_options: [sync_interval: 1_000]
+        )
+
+      :ok = Horde.Cluster.set_members(:sup8, [:sup8, :sup9])
+      :ok = Horde.Cluster.set_members(:sup9, [:sup8, :sup9])
+      eventually(fn -> supervisor_alive_member_count(:sup8) == 2 end)
+
+      # when
+      # Suspending the process simulates sup9 not responding to remote start_child via proxy_to_node.
+      # However, in real life it shuts down, but it's irreproducible in local tests.
+      :sys.suspend(:sup9)
+
+      # then
+      result =
+        Enum.reduce_while(1..100, nil, fn _, _ ->
+          try do
+            {:ok, _} = Horde.DynamicSupervisor.start_child(:sup8, {Task, task_fun()})
+            {:cont, :no_timeout}
+          catch
+            :exit, {:timeout, _} -> {:halt, :timeout}
+          end
+        end)
+
+      assert result == :timeout
+    end
+
+    test "terminate_child is not blocked forever when remote member goes down" do
+      # given
+      {:ok, _} =
+        Horde.DynamicSupervisor.start_link(
+          name: :sup10,
+          strategy: :one_for_one,
+          delta_crdt_options: [sync_interval: 10]
+        )
+
+      {:ok, _} =
+        Horde.DynamicSupervisor.start_link(
+          name: :sup11,
+          strategy: :one_for_one,
+          delta_crdt_options: [sync_interval: 10]
+        )
+
+      :ok = Horde.Cluster.set_members(:sup10, [:sup10, :sup11])
+      :ok = Horde.Cluster.set_members(:sup11, [:sup10, :sup11])
+      eventually(fn -> supervisor_alive_member_count(:sup10) == 2 end)
+
+      children =
+        Enum.map(1..100, fn _ ->
+          {:ok, pid} = Horde.DynamicSupervisor.start_child(:sup10, {Task, task_fun(5_000)})
+          pid
+        end)
+
+      # when
+      :sys.suspend(:sup11)
+
+      # then
+      result =
+        Enum.reduce_while(children, nil, fn pid, _ ->
+          try do
+            :ok = Horde.DynamicSupervisor.terminate_child(:sup10, pid)
+            {:cont, :no_timeout}
+          catch
+            :exit, {:timeout, _} -> {:halt, :timeout}
+          end
+        end)
+
+      assert result == :timeout
+    end
+
+    # every start_child needs an unique function, member to start the child on
+    # is chosen based on child_spec hash
+    defp task_fun(sleep \\ 0) do
+      x = System.unique_integer()
+
+      fn ->
+        Process.sleep(sleep)
+        x
+      end
+    end
+
+    defp supervisor_alive_member_count(supervisor) do
+      members = :sys.get_state(supervisor).members_info
+
+      members
+      |> Map.values()
+      |> Enum.filter(fn %{status: status} -> status == :alive end)
+      |> Enum.count()
     end
   end
 end

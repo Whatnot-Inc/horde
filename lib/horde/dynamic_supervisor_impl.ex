@@ -115,7 +115,7 @@ defmodule Horde.DynamicSupervisorImpl do
     {:reply, :ok, state}
   end
 
-  def handle_call(:tainted?, from, state) do
+  def handle_call(:tainted?, _from, state) do
     {:reply, state.tainted, state}
   end
 

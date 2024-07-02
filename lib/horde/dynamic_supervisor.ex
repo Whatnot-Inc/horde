@@ -280,6 +280,11 @@ defmodule Horde.DynamicSupervisor do
   def untaint(supervisor), do: call(supervisor, :untaint)
 
   @doc """
+  Checks if the supervisor is currently in tainted mode.
+  """
+  def tainted?(supervisor), do: call(supervisor, :tainted?)
+
+  @doc """
   Waits for Horde.DynamicSupervisor to have quorum.
   """
   @spec wait_for_quorum(horde :: GenServer.server(), timeout :: timeout()) :: :ok

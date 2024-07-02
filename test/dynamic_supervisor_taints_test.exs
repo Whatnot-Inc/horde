@@ -24,6 +24,9 @@ defmodule DynamicSupervisorTaintsTest do
 
     assert count1 == 0
     assert count2 + count3 == @proc_count
+    assert Horde.DynamicSupervisor.tainted?(n1)
+    refute Horde.DynamicSupervisor.tainted?(n2)
+    refute Horde.DynamicSupervisor.tainted?(n3)
   end
 
   test "tainted node is still tainted when it re-joins the cluster" do

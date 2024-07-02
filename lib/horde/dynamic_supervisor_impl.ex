@@ -113,6 +113,10 @@ defmodule Horde.DynamicSupervisorImpl do
     {:reply, :ok, state}
   end
 
+  def handle_call(:tainted?, _from, state) do
+    {:reply, state.tainted, state}
+  end
+
   def handle_call(:horde_shutting_down, _f, state) do
     state =
       %{state | shutting_down: true}

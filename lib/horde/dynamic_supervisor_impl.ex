@@ -239,6 +239,8 @@ defmodule Horde.DynamicSupervisorImpl do
   def handle_cast({:relinquish_child_process, child_id}, state) do
     # signal to the rest of the nodes that this process has been relinquished
     # (to the Horde!) by its parent
+
+    Logger.error("Relinquishing #{inspect child_id}")
     with {_, child, _} <- get_item(state.processes_by_id, child_id) do
       DeltaCrdt.put(
         crdt_name(state.name),

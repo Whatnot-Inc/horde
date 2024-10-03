@@ -178,6 +178,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
     case choose_node(child_spec, state) do
       {:ok, %{name: ^this_name}} ->
+        Logger.error("Adding child via start_child")
         {reply, new_state} = add_child(child_spec, state)
         {:reply, reply, new_state}
 
@@ -238,6 +239,8 @@ defmodule Horde.DynamicSupervisorImpl do
   def handle_cast({:relinquish_child_process, child_id}, state) do
     # signal to the rest of the nodes that this process has been relinquished
     # (to the Horde!) by its parent
+
+    Logger.error("Relinquishing #{inspect child_id}")
     with {_, child, _} <- get_item(state.processes_by_id, child_id) do
       DeltaCrdt.put(
         crdt_name(state.name),
@@ -345,6 +348,7 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   defp mark_dead(state, name) do
+    Logger.error("marking dead #{inspect name}")
     DeltaCrdt.put(
       crdt_name(state.name),
       {:member_node_info, name},
@@ -393,6 +397,7 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   def handle_info({:crdt_update, diffs}, state) do
+    Logger.error("CRDT update: #{inspect diffs, pretty: true}")
     new_state =
       update_members(state, diffs)
       |> update_processes(diffs)
@@ -453,6 +458,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
               case current_member do
                 %{status: :dead} ->
+                  Logger.error("migrating process here #{inspect child_spec}")
                   DeltaCrdt.delete(crdt_name(state.name), {:process, child_spec.id}, :infinity)
                   {_response, state} = add_child(randomize_child_id(child_spec), state)
 
@@ -486,6 +492,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
     case choose_node(child_spec, state) do
       {:ok, %{name: ^this_name}} ->
+        Logger.error("Adding child via update process")
         {_resp, new_state} = add_child(child_spec, state)
         new_state
 

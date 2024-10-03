@@ -178,6 +178,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
     case choose_node(child_spec, state) do
       {:ok, %{name: ^this_name}} ->
+        Logger.error("Adding child via start_child")
         {reply, new_state} = add_child(child_spec, state)
         {:reply, reply, new_state}
 
@@ -488,6 +489,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
     case choose_node(child_spec, state) do
       {:ok, %{name: ^this_name}} ->
+        Logger.error("Adding child via update process")
         {_resp, new_state} = add_child(child_spec, state)
         new_state
 

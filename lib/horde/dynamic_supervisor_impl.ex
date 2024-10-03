@@ -345,6 +345,7 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   defp mark_dead(state, name) do
+    Logger.error("marking dead #{inspect name}")
     DeltaCrdt.put(
       crdt_name(state.name),
       {:member_node_info, name},
@@ -453,6 +454,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
               case current_member do
                 %{status: :dead} ->
+                  Logger.error("migrating process here #{inspect child_spec}")
                   DeltaCrdt.delete(crdt_name(state.name), {:process, child_spec.id}, :infinity)
                   {_response, state} = add_child(randomize_child_id(child_spec), state)
 

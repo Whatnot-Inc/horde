@@ -659,6 +659,7 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   defp monitor_supervisors(state) do
+    Logger.error("Members #{inspect members(state)}")
     new_supervisor_refs =
       Enum.flat_map(members(state), fn
         {name, %{status: :alive}} ->

@@ -395,6 +395,7 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   def handle_info({:crdt_update, diffs}, state) do
+    Logger.error("CRDT update: #{inspect diffs}")
     new_state =
       update_members(state, diffs)
       |> update_processes(diffs)

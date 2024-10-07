@@ -248,6 +248,46 @@ defmodule DynamicSupervisorTaintsTest do
     end
   end
 
+  test "a process is migrated from the tainted node that's being shutdown" do
+    # given
+    {n1, n2} = {:horde_1, :horde_2}
+    start_supervised!({Horde.DynamicSupervisor, Keyword.merge(@common_opts, name: n1)})
+    child_spec = make_child_spec(1)
+
+    # process started on node 1, then tainted, then clustered with n2
+    {:ok, _} = Horde.DynamicSupervisor.start_child(n1, child_spec)
+    Horde.DynamicSupervisor.taint(n1)
+    start_supervised!({Horde.DynamicSupervisor, Keyword.merge(@common_opts, name: n2)})
+    cluster([n1, n2])
+
+    # when
+    Process.flag(:trap_exit, true)
+    Horde.DynamicSupervisor.stop(n1, :shutdown)
+
+    # then
+    eventually(fn -> assert count_local_children(n2) == 1 end)
+  end
+
+  test "a process is migrated from the tainted node that's being killed" do
+    # given
+    {n1, n2} = {:horde_1, :horde_2}
+    start_supervised!({Horde.DynamicSupervisor, Keyword.merge(@common_opts, name: n1)})
+    child_spec = make_child_spec(1)
+
+    # process started on node 1, then tainted, then clustered with n2
+    {:ok, _} = Horde.DynamicSupervisor.start_child(n1, child_spec)
+    Horde.DynamicSupervisor.taint(n1)
+    start_supervised!({Horde.DynamicSupervisor, Keyword.merge(@common_opts, name: n2)})
+    cluster([n1, n2])
+
+    # when
+    Process.flag(:trap_exit, true)
+    Horde.DynamicSupervisor.stop(n1, :kill)
+
+    # then
+    eventually(fn -> assert count_local_children(n2) == 1 end)
+  end
+
   defp setup_cluster(size, opts) do
     members =
       for i <- 1..size do

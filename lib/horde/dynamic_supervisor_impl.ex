@@ -664,6 +664,9 @@ defmodule Horde.DynamicSupervisorImpl do
         {name, %{status: :alive}} ->
           [name]
 
+        {name, %{status: :tainted}} ->
+          [name]
+
         _ ->
           []
       end)

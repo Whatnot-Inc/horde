@@ -29,7 +29,7 @@ defmodule Horde.UniformDistribution do
     end
     |> tap(fn value ->
       Logger.error(
-        "Choose node spec: #{inspect(child_spec)}, members: #{inspect(members)}, value: #{inspect(value)}"
+        "Choose node spec: #{inspect(child_spec, pretty: true)}, members: #{inspect(members, pretty: true)}, value: #{inspect(value, pretty: true)}"
       )
     end)
   end

@@ -1,4 +1,5 @@
 defmodule Horde.UniformDistribution do
+  require Logger
   @behaviour Horde.DistributionStrategy
 
   @moduledoc """
@@ -26,6 +27,11 @@ defmodule Horde.UniformDistribution do
 
         {:ok, Map.get(members, chosen_member)}
     end
+    |> tap(fn value ->
+      Logger.error(
+        "Choose node spec: #{inspect(child_spec)}, members: #{inspect(members)}, value: #{inspect(value)}"
+      )
+    end)
   end
 
   def has_quorum?(_members), do: true

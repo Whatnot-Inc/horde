@@ -240,7 +240,8 @@ defmodule Horde.DynamicSupervisorImpl do
     # signal to the rest of the nodes that this process has been relinquished
     # (to the Horde!) by its parent
 
-    Logger.error("Relinquishing #{inspect child_id}")
+    Logger.error("Relinquishing #{inspect(child_id)}")
+
     with {_, child, _} <- get_item(state.processes_by_id, child_id) do
       DeltaCrdt.put(
         crdt_name(state.name),
@@ -348,7 +349,8 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   defp mark_dead(state, name) do
-    Logger.error("marking dead #{inspect name}")
+    Logger.error("marking dead #{inspect(name)}")
+
     DeltaCrdt.put(
       crdt_name(state.name),
       {:member_node_info, name},
@@ -397,7 +399,8 @@ defmodule Horde.DynamicSupervisorImpl do
   end
 
   def handle_info({:crdt_update, diffs}, state) do
-    Logger.error("CRDT update: #{inspect diffs, pretty: true}")
+    Logger.error("CRDT update: #{inspect(diffs, pretty: true)}")
+
     new_state =
       update_members(state, diffs)
       |> update_processes(diffs)
@@ -458,7 +461,7 @@ defmodule Horde.DynamicSupervisorImpl do
 
               case current_member do
                 %{status: :dead} ->
-                  Logger.error("migrating process here #{inspect child_spec}")
+                  Logger.error("migrating process here #{inspect(child_spec)}")
                   DeltaCrdt.delete(crdt_name(state.name), {:process, child_spec.id}, :infinity)
                   {_response, state} = add_child(randomize_child_id(child_spec), state)
 

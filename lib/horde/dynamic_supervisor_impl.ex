@@ -790,7 +790,13 @@ defmodule Horde.DynamicSupervisorImpl do
   defp choose_node(child_spec, state) do
     members = Map.values(members(state))
     result = state.distribution_strategy.choose_node(child_spec, members)
-    Logger.info("Horde chose node for process", child_spec: child_spec, members: members, result: result)
+
+    Logger.info("Horde chose node for process",
+      child_spec: child_spec,
+      members: members,
+      result: result
+    )
+
     result
   end
 

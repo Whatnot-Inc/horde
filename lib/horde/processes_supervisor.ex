@@ -179,6 +179,7 @@
 # This source has been modified from the original located https://github.com/elixir-lang/elixir/blob/master/lib/elixir/lib/dynamic_supervisor.ex
 
 defmodule Horde.ProcessesSupervisor do
+  require Logger
   @moduledoc false
 
   @behaviour GenServer

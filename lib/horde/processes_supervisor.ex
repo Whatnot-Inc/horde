@@ -1020,6 +1020,7 @@ defmodule Horde.ProcessesSupervisor do
   end
 
   defp remove_child_from_horde(state, pid) do
+    Logger.error("Child removed from horde #{inspect state} #{inspect pid}")
     {child_id, _, _, _, _, _} = Map.get(state.children, pid)
     GenServer.cast(state.root_name, {:disown_child_process, child_id})
   end
